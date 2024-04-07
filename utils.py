@@ -23,7 +23,7 @@ def prepare_data(dataset):
     data = load_svmlight_file(filename)
     A, y = data[0], data[1]
     m, n = A.shape
-    
+
     if (2 in y) & (1 in y):
         y = 2 * y - 3
     if (2 in y) & (4 in y):
@@ -46,7 +46,7 @@ def compute_L(dataset, A):
         sigmas = svds(A, return_singular_vectors=False)
         m = A.shape[0]
         L = sigmas.max()**2 / (4*m)
-        
+
         worst_L = 0
         average_L = 0
         denseA = A.toarray()
@@ -70,6 +70,16 @@ def read_solution(dataset, l2, l1):
         return pickle.load(file)
 
 def read_results_from_file(filename, method, args):
+    if method == 'Our_algorithm logreg':
+        with open('dump/'+filename+"Our_algorithm"+str(args[0])
+                  +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
+                  +"_batch_"+str(args[3])+".txt", 'rb') as file:
+            return pickle.load(file)
+    if method == 'ZO_VARAG logreg':
+        with open('dump/'+filename+"ZO_VARAG"+str(args[0])
+                  +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
+                  +"_batch_"+str(args[3])+".txt", 'rb') as file:
+            return pickle.load(file)
     if method == 'ARDFDS_E':
         with open('dump/'+filename+"_ARDFDS_E_steps_const_"+str(args[0])
                   +'_iters_'+str(args[1])+".txt", 'rb') as file:
@@ -164,12 +174,12 @@ def read_results_from_file(filename, method, args):
         with open('dump/'+filename+"_RSGF_logreg_full_noise_steps_const_"+str(args[0])+"_tun_steps_"+str(args[1])
                   +'_epochs_'+str(args[2])+"_delta_"+str(args[3])+".txt", 'rb') as file:
             return pickle.load(file)
-    
+
 
 def make_plots(args):
     supported_modes_y = ['func_vals']
     supported_modes_x = ['time', 'oracle_calls', 'iters']
-    
+
     filename = args[0]
     mode_y = args[1]
     mode_x = args[2]
@@ -180,8 +190,8 @@ def make_plots(args):
     bbox_to_anchor = args[7]
     legend_loc = args[8]
     save_fig = args[9]
-    
-    
+
+
     title_size = sizes[0]
     linewidth = sizes[1]
     markersize = sizes[2]
@@ -190,27 +200,28 @@ def make_plots(args):
     ylabel_size = sizes[5]
     xticks_size = sizes[6]
     yticks_size = sizes[7]
-    
+
     assert(mode_y in supported_modes_y)
     assert(mode_x in supported_modes_x)
-    
+
     fig = plt.figure(figsize=figsize)
     plt.title(title, fontsize=title_size)
-    marker = itertools.cycle(('+', 'd', 'x', 'o', '^', 's', '*', 'p', '<', '>', '^'))
-    
+    marker = itertools.cycle(('d', 'o', '^', 's', '*', 'p', '<', '>', '^'))
+
     num_of_methods = len(methods)
     for idx, method in enumerate(methods):
-        res = read_results_from_file(filename, method[0], method[1:5])
+        res = read_results_from_file(filename, method[0], method[1])
         if method[3] == None:
             length = len(res['iters'])
         else:
             length = method[3]
-        plt.semilogy(res[mode_x][0:length], res[mode_y][0:length] / res[mode_y][0], linewidth=linewidth, marker=next(marker), 
-            markersize = markersize, 
-            # markevery=range(-idx*int(length/(10*num_of_methods)), len(res[mode_x][0:length]), int(length/10)), 
+        # Set f(x^k) - f(x^*) on mode_y                          / res[mode_y][0]
+        plt.semilogy(res[mode_x][0:length], res[mode_y][0:length], linewidth=linewidth, marker=next(marker),
+            markersize = markersize,
+            markevery=range(-idx*int(length/(10*num_of_methods)), len(res[mode_x][0:length]), int(length/10)),
             label = method[2])
-        
-    
+
+
     plt.legend(bbox_to_anchor=bbox_to_anchor, loc=legend_loc, fontsize=legend_size)
     if mode_x == 'time':
         plt.xlabel(r"Time, $s$", fontsize=xlabel_size)
@@ -219,14 +230,15 @@ def make_plots(args):
     if mode_x == 'iters':
         plt.xlabel(r"Number of iterations", fontsize=xlabel_size)
     if mode_y == 'func_vals':
-        plt.ylabel(r"$\frac{f(x_k)-f(x^*)}{f(x_0)-f(x^*)}$", fontsize=ylabel_size)
-    
+        plt.ylabel(r"$f(x_k)-f(x^*)$", fontsize=ylabel_size)
+
     plt.xticks(fontsize=xticks_size)
     _ = plt.yticks(fontsize=yticks_size)
-    
+
     ax = fig.gca()
     ax.xaxis.offsetText.set_fontsize(xticks_size - 2)
     ax.yaxis.offsetText.set_fontsize(yticks_size - 2)
-    
+    ax.grid(which='major', color='#DDDDDD', linewidth=1)
+
     if save_fig[0]:
-        plt.savefig("plot/"+save_fig[1], bbox_inches='tight')
+        plt.savefig("dump/"+save_fig[1], bbox_inches='tight')

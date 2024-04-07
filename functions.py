@@ -9,6 +9,63 @@ from scipy.sparse import csr_matrix
 from scipy.optimize import minimize
 from scipy.special import expit
 
+np.seterr(divide = 'ignore') 
+
+# Added NLLLoss nd its gradient
+# To avoid fast descend to log(0) created a temperature parameter
+
+
+def softmax(z, temp):
+    z -= np.max(z)
+    return expit(z / temp) / np.sum(expit(z / temp))
+
+def pred(x, A, temp):
+    return softmax(A.dot(x), temp)
+
+def negative_loglikelihood_loss(x, args):
+    A = args[0]
+    y = args[1]
+    l2 = args[2]
+    sparse = args[3]
+
+    assert l2 >= 0
+    assert len(y) == A.shape[0]
+    assert len(x) == A.shape[1]
+
+    temp = 100
+
+    preds = pred(x, A, temp)
+
+    m = y.shape[0]
+
+    log_p = np.log(preds)
+    log_1_p = np.log(1 - preds)
+
+    if log_p[0] == np.log(0):
+        log_p = 0
+        log_1_p = 1
+
+    l = -np.sum(y.dot(log_p) + (1 - y).dot(log_1_p))
+
+    return l / m + l2/2 * np.linalg.norm(x) ** 2
+
+def negative_loglikelihood_loss_grad(x, args):
+    A = args[0]
+    y = args[1]
+    mu = args[2]
+    sparse = args[3]
+
+    temp = 100
+
+    preds = pred(x, A, temp)
+
+    m = y.shape[0]
+
+    grad = A.T.dot(preds - y) / m
+    return grad
+
+
+# Logistic regression
 
 def logreg_loss(x, args):
     A = args[0]
@@ -27,6 +84,7 @@ def logreg_loss(x, args):
         l = np.logaddexp(degree1, degree2)
     m = y.shape[0]
     return np.sum(l) / m + l2/2 * norm(x) ** 2
+
 
 def logreg_grad(x, args):
     A = args[0]
@@ -66,8 +124,8 @@ def Nesterov_grad(x, args):
         g[i + 1] = L / 4 * (2 * x[i + 1] - x[i] - x[i + 2])
     return g
 
-def logreg_plus_lasso(x, args):
-    return logreg(x, args[0:2]) + lasso(x, args[2:4])
+# def logreg_plus_lasso(x, args):
+#     return logreg_loss(x, args[0:2]) + lasso(x, args[2:4])
 
-def logreg_plus_lasso_grad(x, args):
-    return logreg_grad(x, args[0:2]) + lasso_grad(x, args[2:4])
+# def logreg_plus_lasso_grad(x, args):
+#     return logreg_grad(x, args[0:2]) + lasso_grad(x, args[2:4])
