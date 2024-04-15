@@ -212,6 +212,7 @@ def rdfds_e_noise_logreg(filename, x_init, args, bs=1, N=100, f_star=None, x_sta
     return res
 
 
+
 # Proposed in the paper
 def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tuning_stepsize_param=1.0):
     n = len(x_init)
@@ -227,6 +228,8 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     sparse_full = args[5]
     L = args[6]
     delta = args[7]
+    rho = args[8]
+
 
     theoretical = False
 
@@ -234,8 +237,11 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
 
     m, n = A.shape
 
-    # Smooth constant 
+    # Smoothness constant 
     beta = 5
+
+    # Overbatching constant 
+    B = 10
 
     def compute_Kernal(beta, r):
         if (beta == 1 or beta == 2):
@@ -251,12 +257,14 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     gamma = 0
     alpha = 0
 
-    if theoretical:
-        rho = max(1, 4 * n * (3 * beta**3) / bs)
-        stepsize = 1. / (L*rho)
-    else:
-        rho = 1.
-        stepsize = tuning_stepsize_param 
+    # if theoretical:
+    #     rho = max(1, 4 * n * (3 * beta**3) / bs) * tuning_stepsize_param
+    #     stepsize = 1. / (L*rho)
+    # else:
+    #     rho = bs
+    #     stepsize = (1 / (bs * L))
+
+    stepsize = (1 / L) * tuning_stepsize_param
 
     dumping_constant = np.max([int(N*m/(bs*10000)), 1])
 
@@ -269,13 +277,13 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     tim = np.array([])
     sample_complexity = np.array([])
 
-    number_of_directions = 1000
-    number_of_samples = np.min([int(N*m*1.0/bs), number_of_directions])*n
+    number_of_directions = int(1e3)
+    number_of_samples = np.min([int(N*m/bs), number_of_directions])*n
     temp_arr = norm().rvs(size=number_of_samples)
 
     directions_counter = 0
 
-    indices = randint.rvs(low=0, high=m, size=min(int(N*m*1.0/bs), int(100000/bs))*bs)
+    indices = randint.rvs(low=0, high=m, size=min(int(N*m/bs), int(100000/bs))*bs)
     indices_size = len(indices)
     indices_counter = 0
 
@@ -318,22 +326,44 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
         # Args update
         yk = alpha * zk + (1 - alpha) * xk
 
-        # Calculate grad
-        f_1 = f(yk + t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
-        f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+        grad_estim = 0
+        for _ in range(B):
 
-        if theoretical:
-            eps = 1e-10
-            if bs > 1 and bs <= 15000:
-                delta = np.sqrt(eps**3 / n)
+            # Calculate grad
+            f_1 = f(yk + t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+            f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+
+            if theoretical:
+                eps = 1e-10
+                if bs > 1 and bs <= 15000:
+                    delta = np.sqrt(eps**3 / n)
+                else:
+                    delta = np.sqrt(np.pow(eps, (3.0 * beta + 1)/(4.0 * (beta - 1))) * np.sqrt(bs) / n)
+                xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
             else:
-                delta = np.sqrt(np.pow(eps, (3.0 * beta + 1)/(4.0 * (beta - 1))) * np.sqrt(bs) / n)
-            xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
-        else:
-            xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
+                xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
 
-        # TODO: откуда вообще берется * 1.0? 
-        grad_estim = (((f_1 + xi_1) - (f_2 + xi_2)) * 1.0/(2*t)) * Kernal * e
+            # TODO: откуда вообще берется * 1.0? 
+            grad_estim += (((f_1 + xi_1) - (f_2 + xi_2)) /(2*t)) * Kernal * e
+
+        grad_estim /= B
+
+        # # Calculate grad
+        # f_1 = f(yk + t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+        # f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+
+        # if theoretical:
+        #     eps = 1e-10
+        #     if bs > 1 and bs <= 15000:
+        #         delta = np.sqrt(eps**3 / n)
+        #     else:
+        #         delta = np.sqrt(np.pow(eps, (3.0 * beta + 1)/(4.0 * (beta - 1))) * np.sqrt(bs) / n)
+        #     xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
+        # else:
+        #     xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
+
+        # # TODO: откуда вообще берется * 1.0? 
+        # grad_estim = (1/B) * (((f_1 + xi_1) - (f_2 + xi_2)) /(2*t)) * Kernal * e
 
         xk = yk - grad_estim * stepsize
         zk = zk - gamma* stepsize* grad_estim

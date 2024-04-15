@@ -11,16 +11,19 @@ from scipy.special import expit
 
 np.seterr(divide = 'ignore') 
 
-# Added NLLLoss nd its gradient
+# Added NLLLoss and its gradient
 # To avoid fast descend to log(0) created a temperature parameter
 
 
-def softmax(z, temp):
-    z -= np.max(z)
-    return expit(z / temp) / np.sum(expit(z / temp))
+def sigmoid(x):
+    return np.where(
+            x >= 0, # condition
+            1 / (1 + np.exp(-x)), # For positive values
+            np.exp(x) / (1 + np.exp(x)) # For negative values
+    )
 
 def pred(x, A, temp):
-    return softmax(A.dot(x), temp)
+    return sigmoid(A.dot(x), temp)
 
 def negative_loglikelihood_loss(x, args):
     A = args[0]
@@ -32,22 +35,23 @@ def negative_loglikelihood_loss(x, args):
     assert len(y) == A.shape[0]
     assert len(x) == A.shape[1]
 
-    temp = 100
+    if sparse == True:
+        pred = A * x
+    else:
+        pred = A.dot(x)
 
-    preds = pred(x, A, temp)
+    pred_proba = sigmoid(pred)
 
     m = y.shape[0]
 
-    log_p = np.log(preds)
-    log_1_p = np.log(1 - preds)
+    y = (y + 1)/2
 
-    if log_p[0] == np.log(0):
-        log_p = 0
-        log_1_p = 1
+    # log_p = np.log(pred_proba)
+    # log_1_p = np.log(1 - pred_proba)
 
-    l = -np.sum(y.dot(log_p) + (1 - y).dot(log_1_p))
+    loss = -np.sum(y.dot(np.log(pred_proba)) + (1 - y).dot(np.log(1 - pred_proba)))
 
-    return l / m + l2/2 * np.linalg.norm(x) ** 2
+    return loss / m + l2/2 * np.linalg.norm(x) ** 2
 
 def negative_loglikelihood_loss_grad(x, args):
     A = args[0]
@@ -55,13 +59,19 @@ def negative_loglikelihood_loss_grad(x, args):
     mu = args[2]
     sparse = args[3]
 
-    temp = 100
+    if sparse == True:
+        pred = A * x
+    else:
+        pred = A.dot(x)
 
-    preds = pred(x, A, temp)
+    y = (y + 1)/2
+
+    pred_proba = sigmoid(pred)
 
     m = y.shape[0]
 
-    grad = A.T.dot(preds - y) / m
+    grad = A.T.dot(pred_proba - y) / m
+
     return grad
 
 

@@ -75,6 +75,11 @@ def read_results_from_file(filename, method, args):
                   +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
                   +"_batch_"+str(args[3])+".txt", 'rb') as file:
             return pickle.load(file)
+    if method == 'Our_algorithm_v1 logreg':
+        with open('dump/'+filename+"Our_algorithm_v1"+str(args[0])
+                  +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
+                  +"_batch_"+str(args[3])+".txt", 'rb') as file:
+            return pickle.load(file)
     if method == 'ZO_VARAG logreg':
         with open('dump/'+filename+"ZO_VARAG"+str(args[0])
                   +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
