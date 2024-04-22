@@ -229,6 +229,7 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     L = args[6]
     delta = args[7]
     rho = args[8]
+    B = args[9]
 
 
     theoretical = False
@@ -241,7 +242,7 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     beta = 5
 
     # Overbatching constant 
-    B = 10
+    # B = 100000
 
     def compute_Kernal(beta, r):
         if (beta == 1 or beta == 2):
