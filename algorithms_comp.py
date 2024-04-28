@@ -278,7 +278,7 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     tim = np.array([])
     sample_complexity = np.array([])
 
-    number_of_directions = int(1e3)
+    number_of_directions = int(1e5)
     number_of_samples = np.min([int(N*m/bs), number_of_directions])*n
     temp_arr = norm().rvs(size=number_of_samples)
 
@@ -299,7 +299,7 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     else:
         A_for_batch = A.toarray()
 
-    for k in tqdm(range(int(N*m*1.0/bs))):
+    for k in tqdm(range(int(N*m/bs))):
 
         if directions_counter == number_of_directions-1:
             temp_arr = norm().rvs(size=number_of_samples)
@@ -331,8 +331,11 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
         for _ in range(B):
 
             # Calculate grad
-            f_1 = f(yk + t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
-            f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+            # f_1 = f(yk + t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+            # f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+
+            f_1 = f(yk + t*r*e,[A_for_batch, y, l2, sparse])
+            f_2 = f(yk - t*r*e,[A_for_batch, y, l2, sparse])
 
             if theoretical:
                 eps = 1e-10
@@ -367,7 +370,7 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
         # grad_estim = (1/B) * (((f_1 + xi_1) - (f_2 + xi_2)) /(2*t)) * Kernal * e
 
         xk = yk - grad_estim * stepsize
-        zk = zk - gamma* stepsize* grad_estim
+        zk = zk - gamma* stepsize * grad_estim
 
         if ((k+1) % dumping_constant == 0):
             iters = np.append(iters, k+1)
