@@ -73,18 +73,25 @@ def read_results_from_file(filename, method, args):
     if method == 'Our_algorithm logreg':
         with open('dump/'+filename+"Our_algorithm"+str(args[0])
                   +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
-                  +"_batch_"+str(args[3])+".txt", 'rb') as file:
+                  +"_batch_"+str(args[3])+str(args[4])+str(args[5])+".txt", 'rb') as file:
             return pickle.load(file)
-    if method == 'Our_algorithm_v1 logreg':
-        with open('dump/'+filename+"Our_algorithm_v1"+str(args[0])
+    if method == 'Our_algorithm nllloss':
+        with open('dump/'+filename+"Our_algorithm_nllloss"+str(args[0])
                   +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
-                  +"_batch_"+str(args[3])+".txt", 'rb') as file:
+                  +"_batch_"+str(args[3])+str(args[4])+str(args[5])+".txt", 'rb') as file:
             return pickle.load(file)
+        
     if method == 'ZO_VARAG logreg':
         with open('dump/'+filename+"ZO_VARAG"+str(args[0])
                   +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
                   +"_batch_"+str(args[3])+".txt", 'rb') as file:
             return pickle.load(file)
+    if method == 'ZO_VARAG nllloss':
+        with open('dump/'+filename+"ZO_VARAG_nllloss"+str(args[0])
+                  +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
+                  +"_batch_"+str(args[3])+".txt", 'rb') as file:
+            return pickle.load(file)
+        
     if method == 'ARDFDS_E':
         with open('dump/'+filename+"_ARDFDS_E_steps_const_"+str(args[0])
                   +'_iters_'+str(args[1])+".txt", 'rb') as file:
@@ -99,6 +106,12 @@ def read_results_from_file(filename, method, args):
                   +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
                   +"_batch_"+str(args[3])+".txt", 'rb') as file:
             return pickle.load(file)
+    if method == 'ARDFDS_E nllloss':
+        with open('dump/'+filename+"_ARDFDS_E_nllloss_noise_steps_const_"+str(args[0])
+                  +'_epochs_'+str(args[1])+"_delta_"+str(args[2])
+                  +"_batch_"+str(args[3])+".txt", 'rb') as file:
+            return pickle.load(file)    
+        
     if method == 'ARDFDS_E full':
         with open('dump/'+filename+"_ARDFDS_E_logreg_full_noise_steps_const_"+str(args[0])
                   +'_epochs_'+str(args[1])+"_delta_"+str(args[2])+".txt", 'rb') as file:

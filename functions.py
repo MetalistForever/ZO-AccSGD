@@ -95,7 +95,6 @@ def logreg_loss(x, args):
     m = y.shape[0]
     return np.sum(l) / m + l2/2 * norm(x) ** 2
 
-
 def logreg_grad(x, args):
     A = args[0]
     y = args[1]
