@@ -233,8 +233,6 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     L = args[6]
     delta = args[7]
     rho = args[8]
-    B = args[9]
-
 
     theoretical = False
 
@@ -271,6 +269,8 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
 
     stepsize = (1 / L) * tuning_stepsize_param
 
+    K = int(N*m*1.0/bs)
+
     dumping_constant = np.max([int(N*m/(bs*10000)), 1])
 
     yk = deepcopy(x_init)
@@ -286,6 +286,10 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     indices_size = len(indices)
     indices_counter = 0
 
+    number_of_samples = K*n
+    temp_arr = norm().rvs(size=number_of_samples)
+    directions_counter = 0
+
     t_start = time.time()
     tim = np.append(tim, time.time() - t_start)
     iters = np.append(iters, 0)
@@ -297,7 +301,9 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     else:
         A_for_batch = A.toarray()
 
-    for k in tqdm(range(int(N*m*1.0/bs))):
+
+    for k in tqdm(range(N)):
+
         if indices_counter == indices_size:
             indices_counter = 0
             indices = randint.rvs(low=0, high=m, size=indices_size)
@@ -314,53 +320,30 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
         yk = alpha * zk + (1 - alpha) * xk
 
         grad_estim = 0
-        for _ in range(B):
 
-            # Calculate grad
-            # f_1 = f(yk + t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
-            # f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+        for _ in range(bs):
 
-            e = rand_sample_on_dsphere(n)
+            if directions_counter == K-1:
+                temp_arr = norm().rvs(size=number_of_samples)
+                directions_counter = 0
+
+            e_unnormalized = temp_arr[directions_counter*n:(directions_counter+1)*n]
+            e = e_unnormalized/np.linalg.norm(e_unnormalized)
+
+            directions_counter += 1
+
             r = np.random.uniform(-1,1)
-
             Kernal = compute_Kernal(beta, r)
-
-            f_1 = f(yk + t*r*e,[A_for_batch, y, l2, sparse])
-            f_2 = f(yk - t*r*e,[A_for_batch, y, l2, sparse])
-
-            if theoretical:
-                eps = 1e-10
-                if bs > 1 and bs <= 15000:
-                    delta = np.sqrt(eps**3 / n)
-                else:
-                    delta = np.sqrt(np.pow(eps, (3.0 * beta + 1)/(4.0 * (beta - 1))) * np.sqrt(bs) / n)
-                xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
-            else:
-                xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
-
-            # TODO: откуда вообще берется * 1.0? 
+            
+            f_1 = f(yk + t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+            f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+            xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
             grad_estim += (((f_1 + xi_1) - (f_2 + xi_2)) /(2*t)) * Kernal * e
 
-        grad_estim /= B
-
-        # # Calculate grad
-        # f_1 = f(yk + t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
-        # f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
-
-        # if theoretical:
-        #     eps = 1e-10
-        #     if bs > 1 and bs <= 15000:
-        #         delta = np.sqrt(eps**3 / n)
-        #     else:
-        #         delta = np.sqrt(np.pow(eps, (3.0 * beta + 1)/(4.0 * (beta - 1))) * np.sqrt(bs) / n)
-        #     xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
-        # else:
-        #     xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
-
-        # # TODO: откуда вообще берется * 1.0? 
-        # grad_estim = (1/B) * (((f_1 + xi_1) - (f_2 + xi_2)) /(2*t)) * Kernal * e
+        grad_estim /= bs
 
         xk = yk - grad_estim * stepsize
+        zk = zk - gamma * stepsize * grad_estim
         zk = zk - gamma * stepsize * grad_estim
 
         if ((k+1) % dumping_constant == 0):
@@ -369,6 +352,95 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
             conv_f = np.append(conv_f, f(xk, [A, y, l2, sparse_full]) - f_star)
             sample_complexity = np.append(sample_complexity, (k+1)*2*bs)
 
+
+
+    # for k in tqdm(range(int(N*m*1.0/bs))):
+        # if directions_counter == K-1:
+        #     temp_arr = norm().rvs(size=number_of_samples)
+        #     directions_counter = 0
+    #     if indices_counter == indices_size:
+    #         indices_counter = 0
+    #         indices = randint.rvs(low=0, high=m, size=indices_size)
+
+    #     batch_ind = indices[indices_counter:(indices_counter+bs)]
+    #     indices_counter += bs
+
+    #     # Params update
+    #     a = gamma * np.sqrt(stepsize * rho)
+    #     gamma = (rho**(-1) + np.sqrt(rho**(-2) + 4 * gamma**2)) / 2
+    #     alpha = (gamma * stepsize) / (gamma * stepsize + a**2)
+
+    #     # Args update
+    #     yk = alpha * zk + (1 - alpha) * xk
+
+        # e_unnormalized = temp_arr[directions_counter*n:(directions_counter+1)*n]
+        # e = e_unnormalized/np.linalg.norm(e_unnormalized)
+    #     directions_counter += 1
+    #     r = np.random.uniform(-1,1)
+    #     Kernal = compute_Kernal(beta, r)
+
+    #     f_1 = f(yk + t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+    #     f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+    #     xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
+
+    #     grad_estim = (((f_1 + xi_1) - (f_2 + xi_2)) /(2*t)) * Kernal * e
+
+    #     # grad_estim = 0
+    #     # for _ in range(B):
+
+    #     #     # Calculate grad
+    #     #     # f_1 = f(yk + t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+    #     #     # f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+
+    #     #     e = rand_sample_on_dsphere(n)
+    #     #     r = np.random.uniform(-1,1)
+
+    #     #     Kernal = compute_Kernal(beta, r)
+
+    #     #     f_1 = f(yk + t*r*e,[A_for_batch, y, l2, sparse])
+    #     #     f_2 = f(yk - t*r*e,[A_for_batch, y, l2, sparse])
+
+    #     #     if theoretical:
+    #     #         eps = 1e-10
+    #     #         if bs > 1 and bs <= 15000:
+    #     #             delta = np.sqrt(eps**3 / n)
+    #     #         else:
+    #     #             delta = np.sqrt(np.pow(eps, (3.0 * beta + 1)/(4.0 * (beta - 1))) * np.sqrt(bs) / n)
+    #     #         xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
+    #     #     else:
+    #     #         xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
+
+    #     #     # TODO: откуда вообще берется * 1.0? 
+    #     #     grad_estim += (((f_1 + xi_1) - (f_2 + xi_2)) /(2*t)) * Kernal * e
+
+    #     # grad_estim /= B
+
+    #     # # Calculate grad
+    #     # f_1 = f(yk + t*r*e,[A_for_batch[  batch_ind], y[batch_ind], l2, sparse])
+    #     # f_2 = f(yk - t*r*e,[A_for_batch[batch_ind], y[batch_ind], l2, sparse])
+
+    #     # if theoretical:
+    #     #     eps = 1e-10
+    #     #     if bs > 1 and bs <= 15000:
+    #     #         delta = np.sqrt(eps**3 / n)
+    #     #     else:
+    #     #         delta = np.sqrt(np.pow(eps, (3.0 * beta + 1)/(4.0 * (beta - 1))) * np.sqrt(bs) / n)
+    #     #     xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
+    #     # else:
+    #     #     xi_1, xi_2 = st.uniform(loc=-delta, scale=2*delta).rvs(size=2)
+
+    #     # # TODO: откуда вообще берется * 1.0? 
+    #     # grad_estim = (1/B) * (((f_1 + xi_1) - (f_2 + xi_2)) /(2*t)) * Kernal * e
+
+    #     xk = yk - grad_estim * stepsize
+    #     zk = zk - gamma * stepsize * grad_estim
+
+    #     if ((k+1) % dumping_constant == 0):
+    #         iters = np.append(iters, k+1)
+    #         tim = np.append(tim, time.time() - t_start)
+    #         conv_f = np.append(conv_f, f(xk, [A, y, l2, sparse_full]) - f_star)
+    #         sample_complexity = np.append(sample_complexity, (k+1)*2*bs)
+
     res = {'last_iter'   : xk,
            'func_vals'   : conv_f,
            'iters'       : iters,
@@ -376,7 +448,7 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
            'oracle_calls': sample_complexity}
     
     with open("dump/"+filename+"Our_algorithm"+str(tuning_stepsize_param)+"_epochs_"+str(N)+
-              "_delta_"+str(delta)+"_batch_"+str(bs)+str(B)+str(rho)+".txt", 'wb') as file:
+              "_delta_"+str(delta)+"_batch_"+str(bs)+str(rho)+".txt", 'wb') as file:
         pickle.dump(res, file)
 
     return res
