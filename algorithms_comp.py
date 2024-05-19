@@ -287,7 +287,7 @@ def ZO_AccSGD(filename, x_init, args, bs=1, N=100, f_star=None, x_star=None, tun
     indices_size = len(indices)
     indices_counter = 0
 
-    number_of_samples = K*n
+    number_of_samples = (N*bs)*n
     temp_arr = norm().rvs(size=number_of_samples)
     directions_counter = 0
 
