@@ -5,7 +5,7 @@
 <p align="justify">This paper addresses an optimization problem where computing gradients is impractical, placing it within the realm of black-box optimization. In this context, oracles furnish only the objective function's value at a given point, potentially with bounded stochastic noise. Assuming convexity and increased smoothness, our contribution introduces a novel zero-order accelerated stochastic gradient descent (ZO-AccSGD) method, leveraging kernel approximation to exploit increased smoothness. Theoretical analysis reveals the superiority convergence results of our ZO-AccSGD algorithm over state-of-the-art (SOTA) methods, particularly in improved iteration complexity estimation. Moreover, our analysis demonstrates <i>a surprising way to improve convergence to the error floor by utilizing the overbatching effect</i>. Validation of our theoretical results is demonstrated both on the model function and on functions of interest in the field of machine learning. A comprehensive discussion underscores the superiority of our proposed algorithm, offering advancements in solving the original problem compared to existing state-of-the-art methods.
 
 <h2 align="left"> Intro </h2>
-This repository contains code for experiments, provided in the paper \url{}. 
+This repository contains code for experiments, provided in the article. 
 
 <h2 align="left"> Files </h2>
 <ul>
