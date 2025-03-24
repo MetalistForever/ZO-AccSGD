@@ -1,4 +1,4 @@
-<h1 align="center"> The "Overbatching" Effect? Yes, or How to Improve Error Floor in Black-Box Optimization Problems </h1>
+<h1 align="center"> The “Black-Box” Optimization Problem: Zero-Order Accelerated Stochastic Method via Kernel Approximation </h1>
 
 <h3 align="center"> Abstract </h3>
 
